@@ -65,3 +65,40 @@ export const generarFormularioPayU = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+export async function actualizarSaldo(req, res) {
+  try {
+    const { idTarjeta, monto } = req.body;
+
+    if (!idTarjeta || typeof monto !== "number") {
+      return res.status(400).json({ error: "Faltan datos o formato incorrecto" });
+    }
+
+    // Obtener saldo actual
+    const { data: tarjeta, error: errGet } = await supabase
+      .from("tarjetas")
+      .select("saldo")
+      .eq("idTarjeta", idTarjeta)
+      .single();
+
+    if (errGet) {
+      return res.status(404).json({ error: "Tarjeta no encontrada" });
+    }
+
+    const nuevoSaldo = Number(tarjeta.saldo) + monto;
+
+    // Actualizar saldo
+    const { error: errUpdate } = await supabase
+      .from("tarjetas")
+      .update({ saldo: nuevoSaldo })
+      .eq("idTarjeta", idTarjeta);
+
+    if (errUpdate) {
+      return res.status(500).json({ error: "Error actualizando saldo" });
+    }
+
+    return res.json({ mensaje: "Saldo actualizado", idTarjeta, nuevoSaldo });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Error interno del servidor" });
+  }
+}

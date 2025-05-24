@@ -1,5 +1,5 @@
 import express from "express";
-import { getTarjetasDeCuenta, getTarjetaById, createTarjeta, deleteTarjeta, generarFormularioPayU  } from "../controllers/tarjetasController.js";
+import { getTarjetasDeCuenta, getTarjetaById, createTarjeta, deleteTarjeta, generarFormularioPayU, actualizarSaldo  } from "../controllers/tarjetasController.js";
 
 const router = express.Router();
 
@@ -11,6 +11,7 @@ router.post("/crearTarjeta/:idcuenta", createTarjeta);
 
 //router.put("/:id", updateTarjeta);
 router.delete("/eliminar/:id", deleteTarjeta);
+router.post("/actualizarSaldo", actualizarSaldo);
 
 export default router;
 

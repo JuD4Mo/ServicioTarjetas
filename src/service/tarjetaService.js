@@ -21,7 +21,7 @@ export const eliminarTarjetaById = async(tarjetaId) => {
 }
 
 export const generarDatosRecargaPayU = async (idtarjeta, email, monto) => {
-  const referencia = `recarga-${Date.now()}`;
+  const referencia = `recarga-${Date.now()}-${idtarjeta}`;
   const signature = "7ee7cf808ce6a39b17481c54f2c57acc"; 
 
   const datos = {
