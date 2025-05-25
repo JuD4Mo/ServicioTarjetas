@@ -29,8 +29,10 @@ export const crearTarjeta = async (req, res) => {
       })
     }
 
-    // Verificar si la tarjeta ya está asignada
-    const { asignada, error: errorAsignada } = await tarjetaService.tarjetaYaAsignada(numeroTarjeta)
+    console.log("Card found:", tarjetaExiste)
+
+    // Verificar si la tarjeta ya está asignada - USAR EL IDTARJETA, NO EL NUMERO
+    const { asignada, error: errorAsignada } = await tarjetaService.tarjetaYaAsignada(tarjetaExiste.idtarjeta)
     if (errorAsignada) {
       console.error("Error checking card assignment:", errorAsignada)
       return res.status(500).json({
