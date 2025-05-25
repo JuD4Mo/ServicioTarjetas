@@ -89,11 +89,12 @@ export const crearTarjeta = async (info, idcuenta) => {
 
 export const getTarjetaCuentaId = async (cuentaId) => {
   try {
-    // Hacer join directo para obtener ambos IDs
+    // Hacer join directo para obtener ambos IDs y la fecha de última recarga
     const result = await supabase
       .from("tarjetas")
       .select(`
         idtarjeta,
+        ultimarecarga,
         tarjetas_registradas!idTarjetaExistente (
           idtarjeta,
           numero_tarjeta,
@@ -115,6 +116,7 @@ export const getTarjetaCuentaId = async (cuentaId) => {
         numero_tarjeta: item.tarjetas_registradas.numero_tarjeta,
         saldo: item.tarjetas_registradas.saldo,
         fechaExpedicion: item.tarjetas_registradas.fechaExpedicion,
+        ultimarecarga: item.ultimarecarga, // Fecha de última recarga
       })) || []
 
     return { data: transformedData, error: null }
@@ -189,23 +191,23 @@ export const actualizarSaldo = async (idTarjeta, monto) => {
       .update({ saldo: nuevoSaldo })
       .eq("idtarjeta", idTarjeta)
 
-    const hoy = new Date().toISOString().split("T")[0];
+    const hoy = new Date().toISOString().split("T")[0]
     const { data: tarjetaActualizada, error: errFecha } = await supabase
       .from("tarjetas")
       .update({ ultimarecarga: hoy })
       .eq("idTarjetaExistente", idTarjeta)
       .select("ultimarecarga")
-      .maybeSingle();   
-    
-      if (errFecha) return { error: errFecha };
+      .maybeSingle()
 
-      return {
-        data: {
-          idTarjeta,
-          nuevoSaldo,
-          nuevaFechaRecarga: tarjetaActualizada?.ultimarecarga || hoy
-        }
-      };
+    if (errFecha) return { error: errFecha }
+
+    return {
+      data: {
+        idTarjeta,
+        nuevoSaldo,
+        nuevaFechaRecarga: tarjetaActualizada?.ultimarecarga || hoy,
+      },
+    }
   } catch (error) {
     console.error("Error in actualizarSaldo:", error)
     return { error }
