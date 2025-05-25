@@ -4,7 +4,7 @@ export const tarjetaEnLaBD = async (numTarjeta) => {
   try {
     const result = await supabase
       .from("tarjetas_registradas")
-      .select("numero_tarjeta")
+      .select("idtarjeta, numero_tarjeta") // Necesitamos el idtarjeta también
       .eq("numero_tarjeta", numTarjeta)
       .maybeSingle()
 
@@ -16,14 +16,14 @@ export const tarjetaEnLaBD = async (numTarjeta) => {
   }
 }
 
-export const tarjetaYaAsignada = async (numeroTarjeta) => {
+export const tarjetaYaAsignada = async (idTarjeta) => {
   try {
-    console.log("Checking if card is assigned:", numeroTarjeta)
+    console.log("Checking if card is assigned with idTarjeta:", idTarjeta)
 
     const result = await supabase
       .from("tarjetas")
       .select("idtarjeta")
-      .eq("idTarjetaExistente", numeroTarjeta)
+      .eq("idTarjetaExistente", idTarjeta) // Usar el idtarjeta (integer)
       .maybeSingle()
 
     console.log("tarjetaYaAsignada result:", result)
@@ -45,19 +45,22 @@ export const crearTarjeta = async (info, idcuenta) => {
     const numeroTarjeta = info.numeroTarjeta
     console.log("Creating card:", { numeroTarjeta, idcuenta })
 
-    // Verificar si existe en BD
-    const { data, error: errorTarjeta } = await tarjetaEnLaBD(numeroTarjeta)
+    // Verificar si existe en BD y obtener su idtarjeta
+    const { data: tarjetaData, error: errorTarjeta } = await tarjetaEnLaBD(numeroTarjeta)
     if (errorTarjeta) {
       console.error("Error checking card existence:", errorTarjeta)
       return { error: errorTarjeta }
     }
-    if (!data) {
+    if (!tarjetaData) {
       console.log("Card does not exist in database")
       return { error: new Error("El número de tarjeta ingresado no existe") }
     }
 
-    // Verificar si ya está asignada
-    const { asignada, error: errorAsignada } = await tarjetaYaAsignada(numeroTarjeta)
+    const idTarjetaExistente = tarjetaData.idtarjeta
+    console.log("Found card with idtarjeta:", idTarjetaExistente)
+
+    // Verificar si ya está asignada usando el idtarjeta
+    const { asignada, error: errorAsignada } = await tarjetaYaAsignada(idTarjetaExistente)
     if (errorAsignada) {
       console.error("Error checking card assignment:", errorAsignada)
       return { error: errorAsignada }
@@ -69,7 +72,8 @@ export const crearTarjeta = async (info, idcuenta) => {
 
     // Crear la asignación
     const ultimarecarga = null
-    const idTarjetaExistente = numeroTarjeta
+
+    console.log("Inserting assignment:", { ultimarecarga, idcuenta, idTarjetaExistente })
 
     const result = await supabase.from("tarjetas").insert([{ ultimarecarga, idcuenta, idTarjetaExistente }]).select("*")
 
