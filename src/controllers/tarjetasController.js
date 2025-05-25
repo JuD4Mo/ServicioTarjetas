@@ -5,6 +5,8 @@ export const crearTarjeta = async (req, res) => {
     const { idcuenta } = req.params
     const { numeroTarjeta } = req.body
 
+    console.log("crearTarjeta called with:", { idcuenta, numeroTarjeta })
+
     if (!numeroTarjeta) {
       return res.status(400).json({
         error: { message: "El número de tarjeta es requerido" },
@@ -14,12 +16,14 @@ export const crearTarjeta = async (req, res) => {
     // Verificar si la tarjeta existe en la BD
     const { data: tarjetaExiste, error: errorTarjeta } = await tarjetaService.tarjetaEnLaBD(numeroTarjeta)
     if (errorTarjeta) {
+      console.error("Error checking card existence:", errorTarjeta)
       return res.status(500).json({
         error: { message: "Error al verificar la tarjeta" },
       })
     }
 
     if (!tarjetaExiste) {
+      console.log("Card does not exist:", numeroTarjeta)
       return res.status(400).json({
         error: { message: "El número de tarjeta ingresado no existe" },
       })
@@ -28,12 +32,14 @@ export const crearTarjeta = async (req, res) => {
     // Verificar si la tarjeta ya está asignada
     const { asignada, error: errorAsignada } = await tarjetaService.tarjetaYaAsignada(numeroTarjeta)
     if (errorAsignada) {
+      console.error("Error checking card assignment:", errorAsignada)
       return res.status(500).json({
-        error: { message: "Error al verificar asignación de tarjeta" },
+        error: { message: "Error al verificar asignación de tarjeta", details: errorAsignada },
       })
     }
 
     if (asignada) {
+      console.log("Card already assigned:", numeroTarjeta)
       return res.status(400).json({
         error: { message: "La tarjeta ya está asignada a una cuenta" },
       })
@@ -43,17 +49,19 @@ export const crearTarjeta = async (req, res) => {
     const { data, error } = await tarjetaService.crearTarjeta({ numeroTarjeta }, idcuenta)
 
     if (error) {
+      console.error("Error creating card:", error)
       return res.status(500).json({
         error: { message: error.message || "Error al registrar la tarjeta" },
       })
     }
 
+    console.log("Card created successfully:", data)
     res.status(201).json({
       message: "Tarjeta registrada exitosamente",
       data,
     })
   } catch (error) {
-    console.error("Error en crearTarjeta:", error)
+    console.error("Exception in crearTarjeta:", error)
     res.status(500).json({
       error: { message: "Error interno del servidor" },
     })

@@ -1,112 +1,176 @@
-import { supabase } from "../db/supaClient.js";
+import { supabase } from "../db/supaClient.js"
 
 export const tarjetaEnLaBD = async (numTarjeta) => {
-  return await supabase
-    .from('tarjetas_registradas')
-    .select('numero_tarjeta')
-    .eq('numero_tarjeta', numTarjeta)
-    .maybeSingle();
-};
+  try {
+    const result = await supabase
+      .from("tarjetas_registradas")
+      .select("numero_tarjeta")
+      .eq("numero_tarjeta", numTarjeta)
+      .maybeSingle()
 
-export const crearTarjeta = async (info, idcuenta) => {
-  const numeroTarjeta = info.numeroTarjeta;
-
-  const { data, error: errorTarjeta } = await tarjetaEnLaBD(numeroTarjeta);
-  if (errorTarjeta) return { error: errorTarjeta };
-  if (!data) return { error: new Error("El número de tarjeta ingresado no existe") };
-
-  const ultimarecarga = null;
-  const idTarjetaExistente = numeroTarjeta;
-
-  return await supabase
-    .from('tarjetas')
-    .insert([{ ultimarecarga, idcuenta, idTarjetaExistente }])
-    .select('*');
-};
-
-export const getTarjetaCuentaId = async (cuentaId) => {
-  return await supabase
-    .from('tarjetas_registradas_por_cuenta') // vista
-    .select('fechaExpedicion, numero_tarjeta, saldo')
-    .eq('idcuenta', cuentaId);
-};
-
-export const getTarjetaById = async (tarjetaId) => {
-  return await supabase
-    .from('tarjetas_registradas_id_tarjeta') // otra vista
-    .select('fechaExpedicion, numero_tarjeta, saldo')
-    .eq('idtarjeta', tarjetaId);
-};
-
-export const eliminarTarjetaById = async (tarjetaId) => {
-  return await supabase
-    .from('tarjetas')
-    .delete()
-    .eq('idtarjeta', tarjetaId)
-    .single();
-};
-
-export const actualizarSaldo = async (idTarjeta, monto) => {
-  if (typeof monto !== "number" || isNaN(monto)) {
-    return { error: new Error("El monto debe ser un número válido") };
+    console.log("tarjetaEnLaBD result:", result)
+    return result
+  } catch (error) {
+    console.error("Error in tarjetaEnLaBD:", error)
+    return { error }
   }
-
-  if (monto < 0) {
-    return { error: new Error("No se puede agregar un monto negativo") };
-  }
-
-  // Obtener saldo actual desde tarjetas_registradas
-  const { data: tarjeta, error: errGet } = await supabase
-    .from("tarjetas_registradas")
-    .select("saldo")
-    .eq("idtarjeta", idTarjeta)
-    .single();
-
-  if (errGet || !tarjeta) {
-    return { error: errGet || new Error("Tarjeta no encontrada") };
-  }
-
-  const nuevoSaldo = Number(tarjeta.saldo || 0) + monto;
-
-  const { error: errUpdate } = await supabase
-    .from("tarjetas_registradas")
-    .update({ saldo: nuevoSaldo })
-    .eq("idtarjeta", idTarjeta);
-
-  return errUpdate
-    ? { error: errUpdate }
-    : { data: { idTarjeta, nuevoSaldo } };
-};
-
-
-export const generarDatosRecargaPayU = async (idtarjeta, email, monto) => {
-  const referencia = `recarga-${Date.now()}-${idtarjeta}`;
-  const signature = "7ee7cf808ce6a39b17481c54f2c57acc"; // hardcoded o cámbialo
-
-  return {
-    merchantId: "508029",
-    accountId: "512321",
-    description: "Recarga tarjeta transporte",
-    referenceCode: referencia,
-    amount: monto,
-    tax: "0",
-    taxReturnBase: "0",
-    currency: "COP",
-    signature,
-    test: "1",
-    buyerEmail: email,
-    responseUrl: "http://localhost:3005/confirmacion",
-    confirmationUrl: "http://localhost:3005/confirmacion"
-  };
-};
+}
 
 export const tarjetaYaAsignada = async (numeroTarjeta) => {
-  const { data, error } = await supabase
-    .from('tarjetas')
-    .select('idtarjeta')
-    .eq('idTarjetaExistente', numeroTarjeta)
-    .maybeSingle();
+  try {
+    console.log("Checking if card is assigned:", numeroTarjeta)
 
-  if (error) return { error };
-  return { asignada: !!data };
-};
+    const result = await supabase
+      .from("tarjetas")
+      .select("idtarjeta")
+      .eq("idTarjetaExistente", numeroTarjeta)
+      .maybeSingle()
+
+    console.log("tarjetaYaAsignada result:", result)
+
+    if (result.error) {
+      console.error("Database error in tarjetaYaAsignada:", result.error)
+      return { error: result.error }
+    }
+
+    return { asignada: !!result.data }
+  } catch (error) {
+    console.error("Exception in tarjetaYaAsignada:", error)
+    return { error }
+  }
+}
+
+export const crearTarjeta = async (info, idcuenta) => {
+  try {
+    const numeroTarjeta = info.numeroTarjeta
+    console.log("Creating card:", { numeroTarjeta, idcuenta })
+
+    // Verificar si existe en BD
+    const { data, error: errorTarjeta } = await tarjetaEnLaBD(numeroTarjeta)
+    if (errorTarjeta) {
+      console.error("Error checking card existence:", errorTarjeta)
+      return { error: errorTarjeta }
+    }
+    if (!data) {
+      console.log("Card does not exist in database")
+      return { error: new Error("El número de tarjeta ingresado no existe") }
+    }
+
+    // Verificar si ya está asignada
+    const { asignada, error: errorAsignada } = await tarjetaYaAsignada(numeroTarjeta)
+    if (errorAsignada) {
+      console.error("Error checking card assignment:", errorAsignada)
+      return { error: errorAsignada }
+    }
+    if (asignada) {
+      console.log("Card is already assigned")
+      return { error: new Error("La tarjeta ya está asignada a una cuenta") }
+    }
+
+    // Crear la asignación
+    const ultimarecarga = null
+    const idTarjetaExistente = numeroTarjeta
+
+    const result = await supabase.from("tarjetas").insert([{ ultimarecarga, idcuenta, idTarjetaExistente }]).select("*")
+
+    console.log("Card creation result:", result)
+    return result
+  } catch (error) {
+    console.error("Exception in crearTarjeta:", error)
+    return { error }
+  }
+}
+
+export const getTarjetaCuentaId = async (cuentaId) => {
+  try {
+    return await supabase
+      .from("tarjetas_registradas_por_cuenta") // vista
+      .select("fechaExpedicion, numero_tarjeta, saldo")
+      .eq("idcuenta", cuentaId)
+  } catch (error) {
+    console.error("Error in getTarjetaCuentaId:", error)
+    return { error }
+  }
+}
+
+export const getTarjetaById = async (tarjetaId) => {
+  try {
+    return await supabase
+      .from("tarjetas_registradas_id_tarjeta") // otra vista
+      .select("fechaExpedicion, numero_tarjeta, saldo")
+      .eq("idtarjeta", tarjetaId)
+  } catch (error) {
+    console.error("Error in getTarjetaById:", error)
+    return { error }
+  }
+}
+
+export const eliminarTarjetaById = async (tarjetaId) => {
+  try {
+    return await supabase.from("tarjetas").delete().eq("idtarjeta", tarjetaId).single()
+  } catch (error) {
+    console.error("Error in eliminarTarjetaById:", error)
+    return { error }
+  }
+}
+
+export const actualizarSaldo = async (idTarjeta, monto) => {
+  try {
+    if (typeof monto !== "number" || isNaN(monto)) {
+      return { error: new Error("El monto debe ser un número válido") }
+    }
+
+    if (monto < 0) {
+      return { error: new Error("No se puede agregar un monto negativo") }
+    }
+
+    // Obtener saldo actual desde tarjetas_registradas
+    const { data: tarjeta, error: errGet } = await supabase
+      .from("tarjetas_registradas")
+      .select("saldo")
+      .eq("idtarjeta", idTarjeta)
+      .single()
+
+    if (errGet || !tarjeta) {
+      return { error: errGet || new Error("Tarjeta no encontrada") }
+    }
+
+    const nuevoSaldo = Number(tarjeta.saldo || 0) + monto
+
+    const { error: errUpdate } = await supabase
+      .from("tarjetas_registradas")
+      .update({ saldo: nuevoSaldo })
+      .eq("idtarjeta", idTarjeta)
+
+    return errUpdate ? { error: errUpdate } : { data: { idTarjeta, nuevoSaldo } }
+  } catch (error) {
+    console.error("Error in actualizarSaldo:", error)
+    return { error }
+  }
+}
+
+export const generarDatosRecargaPayU = async (idtarjeta, email, monto) => {
+  try {
+    const referencia = `recarga-${Date.now()}-${idtarjeta}`
+    const signature = "7ee7cf808ce6a39b17481c54f2c57acc" // hardcoded o cámbialo
+
+    return {
+      merchantId: "508029",
+      accountId: "512321",
+      description: "Recarga tarjeta transporte",
+      referenceCode: referencia,
+      amount: monto,
+      tax: "0",
+      taxReturnBase: "0",
+      currency: "COP",
+      signature,
+      test: "1",
+      buyerEmail: email,
+      responseUrl: "http://localhost:3005/confirmacion",
+      confirmationUrl: "http://localhost:3005/confirmacion",
+    }
+  } catch (error) {
+    console.error("Error in generarDatosRecargaPayU:", error)
+    return { error }
+  }
+}
