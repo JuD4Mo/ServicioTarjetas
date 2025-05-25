@@ -126,10 +126,26 @@ export const getTarjetaCuentaId = async (cuentaId) => {
 
 export const getTarjetaById = async (tarjetaId) => {
   try {
-    return await supabase
-      .from("tarjetas_registradas_id_tarjeta") // otra vista
-      .select("fechaExpedicion, numero_tarjeta, saldo")
+    console.log("getTarjetaById called with:", tarjetaId)
+
+    const result = await supabase
+      .from("tarjetas_registradas") // Usar la tabla directa en lugar de la vista
+      .select("idtarjeta, fechaExpedicion, numero_tarjeta, saldo")
       .eq("idtarjeta", tarjetaId)
+      .single() // Usar single() en lugar de maybeSingle() para obtener un objeto
+
+    console.log("getTarjetaById result:", result)
+
+    if (result.error) {
+      return { error: result.error }
+    }
+
+    // Asegurar que saldo sea un número
+    if (result.data) {
+      result.data.saldo = Number(result.data.saldo) || 0
+    }
+
+    return result
   } catch (error) {
     console.error("Error in getTarjetaById:", error)
     return { error }

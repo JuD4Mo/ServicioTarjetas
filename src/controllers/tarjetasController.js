@@ -84,10 +84,23 @@ export const getTarjetasDeCuenta = async (req, res) => {
 export const getTarjetaById = async (req, res) => {
   try {
     const { id } = req.params
+    console.log("getTarjetaById controller called with ID:", id)
+
     const { data, error } = await tarjetaService.getTarjetaById(id)
-    if (error) return res.status(400).json({ error: error.message })
+
+    if (error) {
+      console.error("Error in getTarjetaById controller:", error)
+      return res.status(400).json({ error: error.message })
+    }
+
+    if (!data) {
+      return res.status(404).json({ error: "Tarjeta no encontrada" })
+    }
+
+    console.log("Returning tarjeta data:", data)
     res.json(data)
   } catch (error) {
+    console.error("Exception in getTarjetaById controller:", error)
     res.status(500).json({ error: "Error interno del servidor" })
   }
 }
