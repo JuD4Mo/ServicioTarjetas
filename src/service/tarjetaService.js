@@ -56,11 +56,12 @@ export const crearTarjeta = async (info, idcuenta) => {
       return { error: new Error("El número de tarjeta ingresado no existe") }
     }
 
-    const idTarjetaExistente = tarjetaData.idtarjeta
-    console.log("Found card with idtarjeta:", idTarjetaExistente)
+    // AQUÍ ESTABA EL ERROR - usar tarjetaData.idtarjeta correctamente
+    const idTarjetaRegistrada = tarjetaData.idtarjeta
+    console.log("Found card with idtarjeta:", idTarjetaRegistrada)
 
-    // Verificar si ya está asignada usando el idtarjeta
-    const { asignada, error: errorAsignada } = await tarjetaYaAsignada(idTarjetaExistente)
+    // Verificar si ya está asignada usando el idtarjeta (INTEGER)
+    const { asignada, error: errorAsignada } = await tarjetaYaAsignada(idTarjetaRegistrada)
     if (errorAsignada) {
       console.error("Error checking card assignment:", errorAsignada)
       return { error: errorAsignada }
@@ -70,8 +71,9 @@ export const crearTarjeta = async (info, idcuenta) => {
       return { error: new Error("La tarjeta ya está asignada a una cuenta") }
     }
 
-    // Crear la asignación
+    // Crear la asignación usando el idtarjeta como idTarjetaExistente
     const ultimarecarga = null
+    const idTarjetaExistente = idTarjetaRegistrada // Este debe ser el INTEGER
 
     console.log("Inserting assignment:", { ultimarecarga, idcuenta, idTarjetaExistente })
 
