@@ -189,7 +189,23 @@ export const actualizarSaldo = async (idTarjeta, monto) => {
       .update({ saldo: nuevoSaldo })
       .eq("idtarjeta", idTarjeta)
 
-    return errUpdate ? { error: errUpdate } : { data: { idTarjeta, nuevoSaldo } }
+    const hoy = new Date().toISOString().split("T")[0];
+    const { data: tarjetaActualizada, error: errFecha } = await supabase
+      .from("tarjetas")
+      .update({ ultimarecarga: hoy })
+      .eq("idTarjetaExistente", idTarjeta)
+      .select("ultimarecarga")
+      .maybeSingle();   
+    
+      if (errFecha) return { error: errFecha };
+
+      return {
+        data: {
+          idTarjeta,
+          nuevoSaldo,
+          nuevaFechaRecarga: tarjetaActualizada?.ultimarecarga || hoy
+        }
+      };
   } catch (error) {
     console.error("Error in actualizarSaldo:", error)
     return { error }
