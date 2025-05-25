@@ -89,10 +89,35 @@ export const crearTarjeta = async (info, idcuenta) => {
 
 export const getTarjetaCuentaId = async (cuentaId) => {
   try {
-    return await supabase
-      .from("tarjetas_registradas_por_cuenta") // vista
-      .select("fechaExpedicion, numero_tarjeta, saldo")
+    // Hacer join directo para obtener ambos IDs
+    const result = await supabase
+      .from("tarjetas")
+      .select(`
+        idtarjeta,
+        tarjetas_registradas!idTarjetaExistente (
+          idtarjeta,
+          numero_tarjeta,
+          saldo,
+          fechaExpedicion
+        )
+      `)
       .eq("idcuenta", cuentaId)
+
+    if (result.error) {
+      return { error: result.error }
+    }
+
+    // Transformar los datos al formato esperado
+    const transformedData =
+      result.data?.map((item) => ({
+        idtarjeta_asignacion: item.idtarjeta, // ID de la tabla tarjetas (para eliminar)
+        idtarjeta: item.tarjetas_registradas.idtarjeta, // ID de tarjetas_registradas (para recargar)
+        numero_tarjeta: item.tarjetas_registradas.numero_tarjeta,
+        saldo: item.tarjetas_registradas.saldo,
+        fechaExpedicion: item.tarjetas_registradas.fechaExpedicion,
+      })) || []
+
+    return { data: transformedData, error: null }
   } catch (error) {
     console.error("Error in getTarjetaCuentaId:", error)
     return { error }
