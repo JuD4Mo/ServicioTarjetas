@@ -14,7 +14,7 @@ app.use(express.urlencoded({ extended: true }));
 
 
 app.use("/tarjetas", tarjetaRouter);
-app.use("/health", (req, res) => res.send("OK"));
+app.get("/health", (req, res) => res.send("OK"));
 
 const PORT = 3005;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
